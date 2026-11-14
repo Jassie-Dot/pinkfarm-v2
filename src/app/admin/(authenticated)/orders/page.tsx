@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { connection } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { logServerError } from "@/lib/server-log.mjs";
 import { OrdersTable } from "./OrdersTable";
@@ -6,6 +7,9 @@ import { OrdersTable } from "./OrdersTable";
 export const instant = false;
 
 export default async function AdminOrdersPage() {
+  // Orders and their default date filters depend on request time and live data.
+  await connection();
+
   let orders: Prisma.OrderGetPayload<{ include: { items: true } }>[] = [];
   try {
     orders = await prisma.order.findMany({

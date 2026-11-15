@@ -76,7 +76,7 @@ function getSafeDatabaseFailure(error: unknown) {
   let reason = "DATABASE_COMMAND_REJECTED";
   if (/not authorized|unauthorized|authentication failed/.test(message)) reason = "DATABASE_PERMISSION";
   else if (/document too large|bsonobj size|object to insert too large/.test(message)) reason = "DOCUMENT_SIZE_LIMIT";
-  else if (/transaction|replica set|mongos/.test(message)) reason = "TRANSACTION_CONFIGURATION";
+  else if (/transaction/.test(message)) reason = "TRANSACTION_CONFIGURATION";
   else if (/duplicate key/.test(message)) reason = "DUPLICATE_KEY";
   else if (/immutable field|_id.*(modify|update)|cannot update.*_id/.test(message)) reason = "IMMUTABLE_ID";
 
@@ -292,24 +292,11 @@ export async function POST(request: Request) {
 
     let saved = null;
     try {
-      // Use MongoDB's atomic single-document update for settings persistence.
-      // The previous Prisma update path returned P2010 in production even though
-      // reads worked. Upsert also makes first-time setup safe.
-      const result = await prisma.$runCommandRaw({
-        update: "StoreSettings",
-        updates: [{
-          q: { _id: "default" },
-          u: {
-            $set: dataToSave,
-            $currentDate: { updatedAt: true },
-          },
-          upsert: true,
-        }],
+      saved = await prisma.storeSettings.upsert({
+        where: { id: "default" },
+        update: dataToSave,
+        create: dataToSave,
       });
-      if (Number(result.ok) !== 1 || Number(result.n) !== 1) {
-        throw new Error("MongoDB did not confirm the settings update.");
-      }
-      saved = { id: "default", ...dataToSave, updatedAt: new Date() };
     } catch (error) {
       logServerError("security.admin.settings.persist_failed", error);
       const prismaCode = error && typeof error === "object" && "code" in error && typeof error.code === "string"

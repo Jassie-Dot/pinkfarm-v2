@@ -1,8 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 
 // Store reads have safe local fallbacks, so don't hold the storefront open
-// while MongoDB is unreachable. The cooldown also prevents each route from
-// retrying a failed Atlas connection on every request.
+// while MySQL is unreachable. The cooldown avoids retrying a failed connection
+// on every request.
 const isCI = Boolean(process.env.CI) && !process.env.VERCEL;
 const DB_QUERY_TIMEOUT_MS = isCI ? 4_000 : 8_000;
 const DB_RETRY_COOLDOWN_MS = 5_000;
@@ -38,31 +38,21 @@ export const prisma =
   new PrismaClient({
     log: [],
     ...(process.env.DATABASE_URL
-      ? {
-          datasources: {
-            db: {
-              // Keep pages responsive when Atlas is unreachable; MongoDB's default
-              // server selection timeout is 30 seconds per query.
-              url: withMongoTimeouts(process.env.DATABASE_URL),
-            },
-          },
-        }
+      ? { datasources: { db: { url: withMySqlPoolLimits(process.env.DATABASE_URL) } } }
       : {}),
   });
 
-function withMongoTimeouts(connectionString: string): string {
-  if (!connectionString.startsWith("mongodb")) return connectionString;
-
+/** Keep a single Hostinger Node.js process from opening Prisma's CPU-scaled default pool. */
+function withMySqlPoolLimits(connectionString: string): string {
+  if (!connectionString.startsWith("mysql://")) return connectionString;
   try {
     const url = new URL(connectionString);
-    if (!url.searchParams.has("serverSelectionTimeoutMS")) {
-      url.searchParams.set("serverSelectionTimeoutMS", "6000");
-    }
-    if (!url.searchParams.has("connectTimeoutMS")) {
-      url.searchParams.set("connectTimeoutMS", "5000");
-    }
+    if (!url.searchParams.has("connection_limit")) url.searchParams.set("connection_limit", "5");
+    if (!url.searchParams.has("connect_timeout")) url.searchParams.set("connect_timeout", "5");
+    if (!url.searchParams.has("pool_timeout")) url.searchParams.set("pool_timeout", "5");
     return url.toString();
   } catch {
+    // Let Prisma report malformed URLs itself; don't mask the configured value.
     return connectionString;
   }
 }
@@ -95,11 +85,47 @@ export async function queryDatabase<T>(
   } catch (error) {
     if (!options.isolateCooldown) databaseUnavailableUntil = performance.now() + DB_RETRY_COOLDOWN_MS;
     if (performance.now() - lastDatabaseWarningAt >= DB_RETRY_COOLDOWN_MS) {
-      console.warn("MongoDB is unavailable; serving fallback store data.");
+      const diagnostics = getDatabaseErrorDiagnostics(error);
+      console.warn("Database operation failed.", diagnostics);
       lastDatabaseWarningAt = performance.now();
     }
     throw error;
   } finally {
     if (timeout) clearTimeout(timeout);
   }
+}
+
+/** Return stable, non-sensitive connection diagnostics; never include error messages or URIs. */
+export function getDatabaseErrorDiagnostics(error: unknown) {
+  let candidate = error as { name?: unknown; code?: unknown; errorCode?: unknown; cause?: unknown } | null;
+  let errorType = "DatabaseError";
+  let rawCode: string | undefined;
+  const visited = new Set<unknown>();
+  for (let depth = 0; candidate && depth < 4 && !visited.has(candidate); depth++) {
+    visited.add(candidate);
+    if (errorType === "DatabaseError" && typeof candidate.name === "string" && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(candidate.name)) errorType = candidate.name;
+    const value = typeof candidate.code === "string" ? candidate.code :
+      typeof candidate.errorCode === "string" ? candidate.errorCode : undefined;
+    if (value && /^[A-Z0-9_]{2,40}$/.test(value)) {
+      rawCode = value;
+      break;
+    }
+    candidate = candidate.cause as typeof candidate;
+  }
+  const code = rawCode && /^[A-Z0-9_]{2,40}$/.test(rawCode) ? rawCode : undefined;
+
+  let reason = "DATABASE_UNAVAILABLE";
+  if (code === "ECONNREFUSED") reason = "CONNECTION_REFUSED";
+  else if (code === "ENOTFOUND" || code === "EAI_AGAIN") reason = "DNS_LOOKUP_FAILED";
+  else if (code === "ETIMEDOUT" || code === "ESOCKETTIMEDOUT") reason = "CONNECTION_TIMEOUT";
+  else if (code === "TLS_ERROR" || code === "CERT_HAS_EXPIRED") reason = "TLS_FAILURE";
+  else if (code === "P1001") reason = "DATABASE_HOST_UNREACHABLE";
+  else if (code === "P1002" || code === "P1008") reason = "CONNECTION_TIMEOUT";
+  else if (code === "P1017") reason = "DATABASE_CONNECTION_CLOSED";
+  else if (code === "P1000") reason = "AUTHENTICATION_FAILED";
+  else if (code === "P1010") reason = "DATABASE_PERMISSION_DENIED";
+  else if (/Authentication/i.test(errorType)) reason = "AUTHENTICATION_FAILED";
+  else if (/KnownRequest/i.test(errorType) && code?.startsWith("P")) reason = "PRISMA_REQUEST_FAILED";
+
+  return { errorType, ...(code ? { code } : {}), reason };
 }

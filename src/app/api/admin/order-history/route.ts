@@ -20,7 +20,7 @@ function parseDeletionScope(value: unknown): DeletionScope | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const scope = value as Record<string, unknown>;
   if (scope.type === "all") return { type: "all" };
-  if (scope.type === "single" && typeof scope.orderId === "string" && /^[a-f\d]{24}$/i.test(scope.orderId)) {
+  if (scope.type === "single" && typeof scope.orderId === "string" && scope.orderId.length > 0 && scope.orderId.length <= 191) {
     return { type: "single", orderId: scope.orderId };
   }
   if (scope.type === "range" && typeof scope.from === "string" && typeof scope.to === "string") {

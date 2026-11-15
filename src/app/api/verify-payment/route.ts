@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     if (!parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return NextResponse.json({ error: "Payment details must be a JSON object." }, { status: 400 });
     const { orderId, razorpay_payment_id, razorpay_order_id, razorpay_signature } = parsed.value as Record<string, unknown>;
-    if (typeof orderId !== "string" || !/^[0-9a-fA-F]{24}$/.test(orderId) || typeof razorpay_payment_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(razorpay_payment_id) || typeof razorpay_order_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(razorpay_order_id) || typeof razorpay_signature !== "string" || !/^[0-9a-fA-F]{64}$/.test(razorpay_signature)) {
+    if (typeof orderId !== "string" || !orderId || orderId.length > 191 || typeof razorpay_payment_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(razorpay_payment_id) || typeof razorpay_order_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(razorpay_order_id) || typeof razorpay_signature !== "string" || !/^[0-9a-fA-F]{64}$/.test(razorpay_signature)) {
       return NextResponse.json({ error: "Payment details are invalid." }, { status: 400 });
     }
 

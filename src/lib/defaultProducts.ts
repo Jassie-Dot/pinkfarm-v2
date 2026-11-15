@@ -1,4 +1,5 @@
 import { prisma, queryDatabase } from "@/lib/db";
+import { getStringArray } from "@/lib/json-settings";
 
 export interface ProductVariant {
   id: string;
@@ -363,11 +364,13 @@ export async function getStoreProducts(options?: { includeUnavailable?: boolean 
     if (products && products.length > 0) {
       return products as unknown as StoreProduct[];
     }
+    if (products) return [];
   } catch {
     // The shared database helper logs one concise warning and opens a short
     // cooldown so an Atlas outage cannot stall every shop navigation.
   }
 
+  if (process.env.NODE_ENV === "production") throw new Error("Store products are temporarily unavailable because the database could not be reached.");
   return FALLBACK_PRODUCTS;
 }
 
@@ -390,6 +393,7 @@ export async function getStoreProductBySlug(slug: string): Promise<StoreProduct 
     // Fall through to the built-in catalog.
   }
 
+  if (process.env.NODE_ENV === "production") throw new Error("Store products are temporarily unavailable because the database could not be reached.");
   const fallback = FALLBACK_PRODUCTS.find((p) => p.slug === slug);
   return fallback || null;
 }
@@ -413,6 +417,7 @@ export async function getStoreProductById(id: string): Promise<StoreProduct | nu
     // Fall through to the built-in catalog.
   }
 
+  if (process.env.NODE_ENV === "production") throw new Error("Store products are temporarily unavailable because the database could not be reached.");
   const fallback = FALLBACK_PRODUCTS.find((p) => p.id === id);
   return fallback || null;
 }
@@ -429,9 +434,16 @@ export async function getStoreSettings() {
       8_000,
       { isolateCooldown: true },
     );
-    if (settings) return settings;
+    if (settings) return {
+      ...settings,
+      heartProductFeatures: getStringArray(settings.heartProductFeatures, DEFAULT_SETTINGS.heartProductFeatures),
+      founderTags: getStringArray(settings.founderTags, DEFAULT_SETTINGS.founderTags),
+      comboProductIds: getStringArray(settings.comboProductIds),
+      storeCategories: getStringArray(settings.storeCategories, DEFAULT_SETTINGS.storeCategories),
+    };
   } catch {
     // Fall through to the default settings.
   }
+  if (process.env.NODE_ENV === "production") throw new Error("Store settings are temporarily unavailable because the database could not be reached.");
   return DEFAULT_SETTINGS;
 }

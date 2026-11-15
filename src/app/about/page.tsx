@@ -1,8 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Button } from "@/components/ui/Button";
 import { FadeIn, StaggerContainer, StaggerItem, HoverCard, ScaleOnTap, SpotlightCard, GlowPulse } from "@/components/ui/MotionWrappers";
 import { getCachedStoreSettings, getCachedStoreProducts } from "@/lib/cachedStore";
+import { getStringArray } from "@/lib/json-settings";
+
+export const instant = false;
 
 export const metadata = {
   title: "About Us — Pink Farm",
@@ -10,6 +14,7 @@ export const metadata = {
 };
 
 export default async function AboutPage() {
+  await connection();
   const [storeSettings, products] = await Promise.all([getCachedStoreSettings(), getCachedStoreProducts()]);
   const heartProduct = storeSettings.heartProductId
     ? products.find((p) => p.id === storeSettings.heartProductId || p.slug === storeSettings.heartProductId)
@@ -19,7 +24,7 @@ export default async function AboutPage() {
   const founderStoryFirst = storeSettings.founderStoryFirst || "Anjali started her journey as a trained dietitian — someone who spent years understanding the deep connection between what we eat and how we feel. She knew that truly good food doesn't need artificial anything. It just needs care, intention, and the right source.";
   const founderStorySecond = storeSettings.founderStorySecond || "That belief became the seed of Pink Farm. What began as a personal mission to bring honest, nutritious snacks to her own family soon turned into something much bigger — a food brand built on trust, quality, and a quiet promise to never cut corners.";
   const founderQuote = storeSettings.founderQuote || "Pure in nature, good for you. Simple food, stronger you.";
-  const founderTags = storeSettings.founderTags?.length ? storeSettings.founderTags : ["Nutrition", "Food Science", "Innovation", "Entrepreneur", "Founder", "Curator"];
+  const founderTags = getStringArray(storeSettings.founderTags, ["Nutrition", "Food Science", "Innovation", "Entrepreneur", "Founder", "Curator"]);
   return (
     <div className="flex flex-col gap-0 pb-0 overflow-x-hidden">
 
@@ -157,7 +162,7 @@ export default async function AboutPage() {
               </span>
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 max-w-3xl mx-auto">
-              {(storeSettings.heartProductFeatures?.length ? storeSettings.heartProductFeatures : ["Plant-Based", "Gluten-Free", "Low Calorie", "High Calcium", "No Frying", "No Preservatives", "Farm to Table", "Hygienically Packed"]).map((feat: string) => (
+              {getStringArray(storeSettings.heartProductFeatures, ["Plant-Based", "Gluten-Free", "Low Calorie", "High Calcium", "No Frying", "No Preservatives", "Farm to Table", "Hygienically Packed"]).map((feat: string) => (
                 <div key={feat} className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-xl py-3 px-4 text-sm font-medium">
                   {feat}
                 </div>

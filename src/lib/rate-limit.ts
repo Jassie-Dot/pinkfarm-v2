@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getTrustedClientIp } from "@/lib/request-security.mjs";
 
-/** Shared MongoDB-backed fixed-window limiter for authentication endpoints. */
+/** Shared database-backed fixed-window limiter for authentication endpoints. */
 export async function consumeAuthRateLimit(scope: string, identity: string, limit: number, windowMs: number) {
   const secret = process.env.SESSION_SECRET || (process.env.NODE_ENV === "development" ? "local-development-only-change-me-32-chars" : "");
   if (secret.length < 32) throw new Error("Authentication rate limiting requires SESSION_SECRET.");

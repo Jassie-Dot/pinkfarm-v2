@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 import { isSameOriginMutation, readBoundedJson } from "@/lib/request-security.mjs";
 import { AdminProductInputError, classifyAdminProductError } from "@/lib/admin-product-errors.mjs";
+import { getStringArray } from "@/lib/json-settings";
 
 function parseProduct(body: Record<string, unknown>) {
   const name = String(body.name ?? "").trim();
@@ -15,6 +16,7 @@ function parseProduct(body: Record<string, unknown>) {
   const basePrice = Number(body.basePrice);
   const stockQuantity = Number(body.stockQuantity);
   if (!name || !slug || !sku || !category || !imageUrl || !Number.isInteger(basePrice) || basePrice < 0 || !Number.isInteger(stockQuantity) || stockQuantity < 0) throw new AdminProductInputError("Name, slug, SKU, category, image, valid price, and non-negative inventory are required.");
+  if (slug.length > 191 || sku.length > 191) throw new AdminProductInputError("Slug and SKU must be 191 characters or fewer.");
   if (imageUrl.startsWith("data:") && imageUrl.length > 3_500_000) throw new AdminProductInputError("Please choose an image smaller than 2.5 MB.");
   const original = body.originalPrice === "" || body.originalPrice == null ? null : Number(body.originalPrice);
   const additionalImages = (() => {
@@ -45,22 +47,17 @@ function parseProduct(body: Record<string, unknown>) {
   };
 }
 
-function isValidObjectId(str: string): boolean {
-  return /^[0-9a-fA-F]{24}$/.test(str);
-}
-
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isSameOriginMutation(request)) return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
   if (!(await requireAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await params;
-    const isHexId = isValidObjectId(id);
     const parsed = await readBoundedJson(request, 15_000_000);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     if (!parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) return NextResponse.json({ error: "Product data must be a JSON object." }, { status: 400 });
     const { packSize, ...data } = parseProduct(parsed.value as Record<string, unknown>);
     const updated = await prisma.$transaction(async (tx) => {
-      let existing = isHexId ? await tx.product.findUnique({ where: { id } }) : null;
+      let existing = await tx.product.findUnique({ where: { id } });
       if (!existing && data.slug) {
         existing = await tx.product.findUnique({ where: { slug: data.slug } });
       }
@@ -77,7 +74,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       } else {
         product = await tx.product.create({
           data: {
-            ...(isHexId ? { id } : {}),
             ...data,
           },
         });
@@ -114,7 +110,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     try {
       const settings = await prisma.storeSettings.findUnique({ where: { id: "default" } });
-      const currentCats = settings?.storeCategories || ["Makhana", "Nuts", "Pantry"];
+      const currentCats = getStringArray(settings?.storeCategories, ["Makhana", "Nuts", "Pantry"]);
       if (data.category && !currentCats.some((c) => c.toLowerCase() === data.category.toLowerCase())) {
         await prisma.storeSettings.upsert({
           where: { id: "default" },
@@ -141,9 +137,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!(await requireAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await params;
-    const isHexId = isValidObjectId(id);
     const product = await prisma.$transaction(async (tx) => {
-      let existing = isHexId ? await tx.product.findUnique({ where: { id } }) : null;
+      let existing = await tx.product.findUnique({ where: { id } });
       if (!existing) {
         existing = await tx.product.findFirst({ where: { OR: [{ slug: id }, { sku: id }] } });
       }
@@ -161,14 +156,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       });
       const settings = await tx.storeSettings.findUnique({ where: { id: "default" } });
       if (settings) {
-        const comboProductIds = settings.comboProductIds.filter((productId) => productId !== targetId);
-        if (settings.heartProductId === targetId || settings.featuredProductId === targetId || comboProductIds.length !== settings.comboProductIds.length) {
+        const currentComboProductIds = getStringArray(settings.comboProductIds);
+        const comboProductIds = currentComboProductIds.filter((productId) => productId !== targetId);
+        if (settings.heartProductId === targetId || settings.featuredProductId === targetId || comboProductIds.length !== currentComboProductIds.length) {
           await tx.storeSettings.update({
             where: { id: settings.id },
             data: {
               ...(settings.heartProductId === targetId ? { heartProductId: null } : {}),
               ...(settings.featuredProductId === targetId ? { featuredProductId: null } : {}),
-              ...(comboProductIds.length !== settings.comboProductIds.length ? { comboProductIds } : {}),
+              ...(comboProductIds.length !== currentComboProductIds.length ? { comboProductIds } : {}),
             },
           });
         }

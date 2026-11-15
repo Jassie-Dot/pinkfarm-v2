@@ -5,6 +5,7 @@ import { requireAdminSession } from "@/lib/auth";
 import { isSameOriginMutation, readBoundedJson } from "@/lib/request-security.mjs";
 import { AdminProductInputError, classifyAdminProductError } from "@/lib/admin-product-errors.mjs";
 import { getStoreProducts } from "@/lib/defaultProducts";
+import { getStringArray } from "@/lib/json-settings";
 
 export async function GET() {
   if (!(await requireAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,6 +24,7 @@ function parseProduct(body: Record<string, unknown>) {
   if (!name || !slug || !sku || !category || !imageUrl || !Number.isInteger(basePrice) || basePrice < 0 || !Number.isInteger(stockQuantity) || stockQuantity < 0) {
     throw new AdminProductInputError("Name, slug, SKU, category, image, valid price, and non-negative inventory are required.");
   }
+  if (slug.length > 191 || sku.length > 191) throw new AdminProductInputError("Slug and SKU must be 191 characters or fewer.");
   if (imageUrl.startsWith("data:") && imageUrl.length > 3_500_000) throw new AdminProductInputError("Please choose an image smaller than 2.5 MB.");
   const original = body.originalPrice === "" || body.originalPrice == null ? null : Number(body.originalPrice);
   if (original !== null && (!Number.isInteger(original) || original < 0)) throw new AdminProductInputError("Original price must be a valid amount.");
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
 
     try {
       const settings = await prisma.storeSettings.findUnique({ where: { id: "default" } });
-      const currentCategories = settings?.storeCategories || ["Makhana", "Nuts", "Pantry"];
+      const currentCategories = getStringArray(settings?.storeCategories, ["Makhana", "Nuts", "Pantry"]);
       if (!currentCategories.some((category) => category.toLowerCase() === data.category.toLowerCase())) {
         await prisma.storeSettings.upsert({
           where: { id: "default" },

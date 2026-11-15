@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { prisma, queryDatabase } from "@/lib/db";
+import { getStringArray } from "@/lib/json-settings";
 import { DEFAULT_SETTINGS, FALLBACK_PRODUCTS, type StoreProduct } from "@/lib/defaultProducts";
 import {
   serializeStoreProductMedia,
@@ -20,16 +21,16 @@ export async function getCachedStoreProducts(options?: { includeUnavailable?: bo
       }),
     );
 
-    if (products && products.length > 0) {
+    if (products) {
       cacheLife("hours");
       return (products as unknown as StoreProduct[]).map(serializeStoreProductMedia);
     }
   } catch {
-    // Fall through to fallback cache so transient DB outages recover gracefully.
+    // Do not cache outage data as a normal catalog for the regular hours profile.
   }
 
-  cacheLife("hours");
-  return FALLBACK_PRODUCTS.map(serializeStoreProductMedia);
+  cacheLife("seconds");
+  return process.env.NODE_ENV === "production" ? [] : FALLBACK_PRODUCTS.map(serializeStoreProductMedia);
 }
 
 export async function getCachedStoreProductBySlug(slug: string): Promise<StoreProduct | null> {
@@ -49,11 +50,13 @@ export async function getCachedStoreProductBySlug(slug: string): Promise<StorePr
       return serializeStoreProductMedia(product as unknown as StoreProduct);
     }
   } catch {
-    cacheLife("hours");
+    cacheLife("seconds");
+    if (process.env.NODE_ENV === "production") return null;
     const fallback = FALLBACK_PRODUCTS.find((p) => p.slug === slug);
     return fallback ? serializeStoreProductMedia(fallback) : null;
   }
 
+  if (process.env.NODE_ENV === "production") return null;
   const fallback = FALLBACK_PRODUCTS.find((p) => p.slug === slug);
   return fallback ? serializeStoreProductMedia(fallback) : null;
 }
@@ -74,11 +77,16 @@ export async function getCachedStoreSettings() {
     if (settings) {
       return serializeStoreSettingsMedia({
         ...settings,
+        heartProductFeatures: getStringArray(settings.heartProductFeatures, DEFAULT_SETTINGS.heartProductFeatures),
+        founderTags: getStringArray(settings.founderTags, DEFAULT_SETTINGS.founderTags),
+        comboProductIds: getStringArray(settings.comboProductIds),
+        storeCategories: getStringArray(settings.storeCategories, DEFAULT_SETTINGS.storeCategories),
         freeDeliveryThreshold: settings.freeDeliveryThreshold ?? DEFAULT_SETTINGS.freeDeliveryThreshold,
       });
     }
   } catch {
-    cacheLife("hours");
+    // Do not cache an outage fallback for hours; retry against the database shortly.
+    cacheLife("seconds");
     return serializeStoreSettingsMedia(DEFAULT_SETTINGS);
   }
   return serializeStoreSettingsMedia(DEFAULT_SETTINGS);
@@ -169,11 +177,15 @@ export async function getCachedPublicStoreSettings() {
     if (settings) {
       return {
         ...settings,
+        comboProductIds: getStringArray(settings.comboProductIds, fallback.comboProductIds),
+        storeCategories: getStringArray(settings.storeCategories, fallback.storeCategories),
         freeDeliveryThreshold: settings.freeDeliveryThreshold ?? DEFAULT_SETTINGS.freeDeliveryThreshold,
       };
     }
   } catch {
-    cacheLife("hours");
+    // An outage fallback must not be cached for hours after a build-time or
+    // transient connection failure.
+    cacheLife("seconds");
     return fallback;
   }
   return fallback;
@@ -183,7 +195,7 @@ export async function getCachedRawProductMedia(productId: string) {
   "use cache";
   cacheTag("store-products");
 
-  if (!/^[a-fA-F0-9]{24}$/.test(productId)) {
+  if (!productId || productId.length > 191) {
     cacheLife("minutes");
     return null;
   }

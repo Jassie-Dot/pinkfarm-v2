@@ -34,6 +34,7 @@ import {
   Tag,
 } from "lucide-react";
 import { useSettingsStore, DEFAULT_SETTINGS } from "@/store/settingsStore";
+import { DatabaseDiagnostic } from "./DatabaseDiagnostic";
 import { FALLBACK_PRODUCTS, type StoreProduct } from "@/lib/defaultProducts";
 
 type Coupon = {
@@ -783,7 +784,7 @@ export default function StoreSettingsPage() {
 
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const diagnostic = [result.code, result.reason, result.databaseCode ? `MongoDB ${result.databaseCode}` : ""]
+        const diagnostic = [result.code, result.reason, result.databaseCode ? `Database ${result.databaseCode}` : ""]
           .filter(Boolean)
           .join(" · ");
         throw new Error(`${result.error || "Could not save settings."}${diagnostic ? ` (${diagnostic})` : ""}`);
@@ -877,6 +878,7 @@ export default function StoreSettingsPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.15, ease: "easeOut" }}
     >
+      <DatabaseDiagnostic />
       {/* ============================================================== */}
       {/* EYE-SOOTHING HEADER                                            */}
       {/* ============================================================== */}

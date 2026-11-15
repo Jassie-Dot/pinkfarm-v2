@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { AddToCart } from "./AddToCart";
 import { ChevronRight } from "lucide-react";
 import { FadeIn } from "@/components/ui/MotionWrappers";
@@ -9,14 +10,10 @@ import { ProductBadges } from "@/components/products/ProductHighlightBadges";
 import { ProductImageGallery, ProductDescriptionGallery } from "@/components/products/ProductImageGallery";
 import {
   getCachedStoreProductBySlug,
-  getCachedStoreProducts,
   getCachedStoreSettings,
 } from "@/lib/cachedStore";
 
-export async function generateStaticParams() {
-  const products = await getCachedStoreProducts();
-  return products.map((product) => ({ slug: product.slug }));
-}
+export const instant = false;
 
 function ProductDetailSkeleton() {
   return (
@@ -52,6 +49,7 @@ async function ProductDetailContent({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await connection();
   const { slug } = await params;
   const [product, settings] = await Promise.all([
     getCachedStoreProductBySlug(slug),

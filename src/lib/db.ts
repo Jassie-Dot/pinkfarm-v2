@@ -35,7 +35,27 @@ const cachedOrderItemSchemaIsCurrent = Boolean(
 );
 export const prisma =
   (cachedPrisma?.coupon && cachedPrisma.productReview && cachedPrisma.productComment && cachedOrderItemSchemaIsCurrent ? cachedPrisma : undefined) ??
-  new PrismaClient({ log: [] });
+  new PrismaClient({
+    log: [],
+    ...(process.env.DATABASE_URL
+      ? { datasources: { db: { url: withMySqlPoolLimits(process.env.DATABASE_URL) } } }
+      : {}),
+  });
+
+/** Keep a single Hostinger Node.js process from opening Prisma's CPU-scaled default pool. */
+function withMySqlPoolLimits(connectionString: string): string {
+  if (!connectionString.startsWith("mysql://")) return connectionString;
+  try {
+    const url = new URL(connectionString);
+    if (!url.searchParams.has("connection_limit")) url.searchParams.set("connection_limit", "5");
+    if (!url.searchParams.has("connect_timeout")) url.searchParams.set("connect_timeout", "5");
+    if (!url.searchParams.has("pool_timeout")) url.searchParams.set("pool_timeout", "5");
+    return url.toString();
+  } catch {
+    // Let Prisma report malformed URLs itself; don't mask the configured value.
+    return connectionString;
+  }
+}
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 

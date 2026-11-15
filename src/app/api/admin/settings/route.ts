@@ -76,7 +76,7 @@ function getSafeDatabaseFailure(error: unknown) {
   let reason = "DATABASE_COMMAND_REJECTED";
   if (/not authorized|unauthorized|authentication failed/.test(message)) reason = "DATABASE_PERMISSION";
   else if (/document too large|bsonobj size|object to insert too large/.test(message)) reason = "DOCUMENT_SIZE_LIMIT";
-  else if (/transaction|replica set|mongos/.test(message)) reason = "TRANSACTION_CONFIGURATION";
+  else if (/transaction/.test(message)) reason = "TRANSACTION_CONFIGURATION";
   else if (/duplicate key/.test(message)) reason = "DUPLICATE_KEY";
   else if (/immutable field|_id.*(modify|update)|cannot update.*_id/.test(message)) reason = "IMMUTABLE_ID";
 

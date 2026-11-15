@@ -20,18 +20,9 @@ async function main() {
         businessAddress: "Dugri, Ludhiana, Punjab - 141003",
       }
     });
-  } else {
-    await prisma.storeSettings.update({
-      where: { id: "default" },
-      data: {
-        supportPhone: "+91 8437504040",
-        supportEmail: "wecare@pinkfarm.in",
-        businessAddress: "Dugri, Ludhiana, Punjab - 141003",
-      }
-    });
   }
 
-  // Create or Update Admin User
+  // Create the admin account only once so future deploy setup runs cannot reset its password.
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (!adminPassword || adminPassword.length < 8) {
     throw new Error("Set an ADMIN_PASSWORD of at least 8 characters before seeding the authorized admin account.");
@@ -50,13 +41,6 @@ async function main() {
         email: configuredAdminEmail,
         password: await bcrypt.hash(adminPassword, 12),
         name: "Pink Farm Admin"
-      }
-    });
-  } else {
-    await prisma.adminUser.update({
-      where: { email: configuredAdminEmail },
-      data: {
-        password: await bcrypt.hash(adminPassword, 12)
       }
     });
   }

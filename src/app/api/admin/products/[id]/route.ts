@@ -16,6 +16,7 @@ function parseProduct(body: Record<string, unknown>) {
   const basePrice = Number(body.basePrice);
   const stockQuantity = Number(body.stockQuantity);
   if (!name || !slug || !sku || !category || !imageUrl || !Number.isInteger(basePrice) || basePrice < 0 || !Number.isInteger(stockQuantity) || stockQuantity < 0) throw new AdminProductInputError("Name, slug, SKU, category, image, valid price, and non-negative inventory are required.");
+  if (slug.length > 191 || sku.length > 191) throw new AdminProductInputError("Slug and SKU must be 191 characters or fewer.");
   if (imageUrl.startsWith("data:") && imageUrl.length > 3_500_000) throw new AdminProductInputError("Please choose an image smaller than 2.5 MB.");
   const original = body.originalPrice === "" || body.originalPrice == null ? null : Number(body.originalPrice);
   const additionalImages = (() => {

@@ -784,7 +784,7 @@ export default function StoreSettingsPage() {
 
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const diagnostic = [result.code, result.reason, result.databaseCode ? `MongoDB ${result.databaseCode}` : ""]
+        const diagnostic = [result.code, result.reason, result.databaseCode ? `Database ${result.databaseCode}` : ""]
           .filter(Boolean)
           .join(" · ");
         throw new Error(`${result.error || "Could not save settings."}${diagnostic ? ` (${diagnostic})` : ""}`);

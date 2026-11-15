@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { prisma, queryDatabase } from "@/lib/db";
+import { getStringArray } from "@/lib/json-settings";
 import { DEFAULT_SETTINGS, FALLBACK_PRODUCTS, type StoreProduct } from "@/lib/defaultProducts";
 import {
   serializeStoreProductMedia,
@@ -76,6 +77,10 @@ export async function getCachedStoreSettings() {
     if (settings) {
       return serializeStoreSettingsMedia({
         ...settings,
+        heartProductFeatures: getStringArray(settings.heartProductFeatures, DEFAULT_SETTINGS.heartProductFeatures),
+        founderTags: getStringArray(settings.founderTags, DEFAULT_SETTINGS.founderTags),
+        comboProductIds: getStringArray(settings.comboProductIds),
+        storeCategories: getStringArray(settings.storeCategories, DEFAULT_SETTINGS.storeCategories),
         freeDeliveryThreshold: settings.freeDeliveryThreshold ?? DEFAULT_SETTINGS.freeDeliveryThreshold,
       });
     }
@@ -171,6 +176,8 @@ export async function getCachedPublicStoreSettings() {
     if (settings) {
       return {
         ...settings,
+        comboProductIds: getStringArray(settings.comboProductIds, fallback.comboProductIds),
+        storeCategories: getStringArray(settings.storeCategories, fallback.storeCategories),
         freeDeliveryThreshold: settings.freeDeliveryThreshold ?? DEFAULT_SETTINGS.freeDeliveryThreshold,
       };
     }
@@ -185,7 +192,7 @@ export async function getCachedRawProductMedia(productId: string) {
   "use cache";
   cacheTag("store-products");
 
-  if (!/^[a-fA-F0-9]{24}$/.test(productId)) {
+  if (!productId || productId.length > 191) {
     cacheLife("minutes");
     return null;
   }

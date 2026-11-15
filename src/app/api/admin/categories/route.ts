@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdminSession } from "@/lib/auth";
 import { isSameOriginMutation, readBoundedJson } from "@/lib/request-security.mjs";
+import { getStringArray } from "@/lib/json-settings";
 
 const DEFAULT_CATEGORIES = ["Makhana", "Nuts", "Pantry"];
 
@@ -44,10 +45,7 @@ export async function GET() {
       }),
     ]);
 
-    const configuredCategories =
-      Array.isArray(settings?.storeCategories) && settings.storeCategories.length > 0
-        ? settings.storeCategories
-        : DEFAULT_CATEGORIES;
+    const configuredCategories = getStringArray(settings?.storeCategories, DEFAULT_CATEGORIES);
 
     // Detect all distinct categories from actual products
     const productCategoriesSet = new Set<string>();
@@ -142,10 +140,7 @@ export async function POST(request: Request) {
       where: { id: "default" },
     });
 
-    const currentCats =
-      Array.isArray(settings?.storeCategories) && settings.storeCategories.length > 0
-        ? settings.storeCategories
-        : DEFAULT_CATEGORIES;
+    const currentCats = getStringArray(settings?.storeCategories, DEFAULT_CATEGORIES);
 
     // Check duplicate (case-insensitive)
     if (currentCats.some((c) => c.toLowerCase() === rawName.toLowerCase())) {
@@ -214,10 +209,7 @@ export async function PUT(request: Request) {
       where: { id: "default" },
     });
 
-    const currentCats =
-      Array.isArray(settings?.storeCategories) && settings.storeCategories.length > 0
-        ? settings.storeCategories
-        : DEFAULT_CATEGORIES;
+    const currentCats = getStringArray(settings?.storeCategories, DEFAULT_CATEGORIES);
 
     // ACTION: REORDER
     if (action === "reorder") {
@@ -305,7 +297,7 @@ export async function PUT(request: Request) {
         // Update all products that have oldName (matching case-insensitively via find + update)
         const productsToUpdate = await prisma.product.findMany({
           where: {
-            category: { equals: oldName, mode: "insensitive" },
+            category: { equals: oldName },
           },
           select: { id: true },
         });
@@ -444,10 +436,7 @@ export async function DELETE(request: Request) {
       where: { id: "default" },
     });
 
-    const currentCats =
-      Array.isArray(settings?.storeCategories) && settings.storeCategories.length > 0
-        ? settings.storeCategories
-        : DEFAULT_CATEGORIES;
+    const currentCats = getStringArray(settings?.storeCategories, DEFAULT_CATEGORIES);
 
     const updatedCategories = currentCats.filter(
       (c) => c.toLowerCase() !== categoryName?.toLowerCase()
@@ -463,7 +452,7 @@ export async function DELETE(request: Request) {
     let reassignedCount = 0;
     if (reassignTo) {
       const affectedProducts = await prisma.product.findMany({
-        where: { category: { equals: categoryName, mode: "insensitive" } },
+        where: { category: { equals: categoryName } },
         select: { id: true },
       });
 

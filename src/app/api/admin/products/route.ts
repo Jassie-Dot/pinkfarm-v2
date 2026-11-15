@@ -5,6 +5,7 @@ import { requireAdminSession } from "@/lib/auth";
 import { isSameOriginMutation, readBoundedJson } from "@/lib/request-security.mjs";
 import { AdminProductInputError, classifyAdminProductError } from "@/lib/admin-product-errors.mjs";
 import { getStoreProducts } from "@/lib/defaultProducts";
+import { getStringArray } from "@/lib/json-settings";
 
 export async function GET() {
   if (!(await requireAdminSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 
     try {
       const settings = await prisma.storeSettings.findUnique({ where: { id: "default" } });
-      const currentCategories = settings?.storeCategories || ["Makhana", "Nuts", "Pantry"];
+      const currentCategories = getStringArray(settings?.storeCategories, ["Makhana", "Nuts", "Pantry"]);
       if (!currentCategories.some((category) => category.toLowerCase() === data.category.toLowerCase())) {
         await prisma.storeSettings.upsert({
           where: { id: "default" },

@@ -16,7 +16,7 @@ export async function GET(
 
   if (slug[0] === "product") {
     const productId = slug[1];
-    if (!productId || !/^[a-fA-F0-9]{24}$/.test(productId)) {
+    if (!productId || productId.length > 191) {
       return new NextResponse("Not Found", { status: 404 });
     }
 

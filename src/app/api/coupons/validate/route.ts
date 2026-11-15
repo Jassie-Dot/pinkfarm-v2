@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     if (!code || !Number.isSafeInteger(subtotal) || subtotal < 0) return NextResponse.json({ error: "Enter a coupon code and valid cart." }, { status: 400 });
     const coupon = await prisma.coupon.findUnique({ where: { code } });
     if (!coupon) return NextResponse.json({ error: "Invalid coupon code." }, { status: 404 });
-    const customerId = typeof session?.userId === "string" && /^[0-9a-fA-F]{24}$/.test(session.userId) ? session.userId : undefined;
+    const customerId = typeof session?.userId === "string" ? session.userId : undefined;
     const failure = await getCouponFailure({ coupon, subtotal, phone: phone.length === 10 ? phone : undefined, customerId });
     if (failure) return NextResponse.json({ error: failure }, { status: 400 });
     const discount = calculateCouponDiscount(coupon, subtotal);

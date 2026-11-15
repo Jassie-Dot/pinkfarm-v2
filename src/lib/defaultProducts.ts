@@ -1,4 +1,5 @@
 import { prisma, queryDatabase } from "@/lib/db";
+import { getStringArray } from "@/lib/json-settings";
 
 export interface ProductVariant {
   id: string;
@@ -433,7 +434,13 @@ export async function getStoreSettings() {
       8_000,
       { isolateCooldown: true },
     );
-    if (settings) return settings;
+    if (settings) return {
+      ...settings,
+      heartProductFeatures: getStringArray(settings.heartProductFeatures, DEFAULT_SETTINGS.heartProductFeatures),
+      founderTags: getStringArray(settings.founderTags, DEFAULT_SETTINGS.founderTags),
+      comboProductIds: getStringArray(settings.comboProductIds),
+      storeCategories: getStringArray(settings.storeCategories, DEFAULT_SETTINGS.storeCategories),
+    };
   } catch {
     // Fall through to the default settings.
   }

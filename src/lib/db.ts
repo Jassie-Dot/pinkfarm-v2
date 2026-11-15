@@ -1,8 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 
 // Store reads have safe local fallbacks, so don't hold the storefront open
-// while MongoDB is unreachable. The cooldown also prevents each route from
-// retrying a failed Atlas connection on every request.
+// while MySQL is unreachable. The cooldown avoids retrying a failed connection
+// on every request.
 const isCI = Boolean(process.env.CI) && !process.env.VERCEL;
 const DB_QUERY_TIMEOUT_MS = isCI ? 4_000 : 8_000;
 const DB_RETRY_COOLDOWN_MS = 5_000;
@@ -35,37 +35,7 @@ const cachedOrderItemSchemaIsCurrent = Boolean(
 );
 export const prisma =
   (cachedPrisma?.coupon && cachedPrisma.productReview && cachedPrisma.productComment && cachedOrderItemSchemaIsCurrent ? cachedPrisma : undefined) ??
-  new PrismaClient({
-    log: [],
-    ...(process.env.DATABASE_URL
-      ? {
-          datasources: {
-            db: {
-              // Keep pages responsive when Atlas is unreachable; MongoDB's default
-              // server selection timeout is 30 seconds per query.
-              url: withMongoTimeouts(process.env.DATABASE_URL),
-            },
-          },
-        }
-      : {}),
-  });
-
-function withMongoTimeouts(connectionString: string): string {
-  if (!connectionString.startsWith("mongodb")) return connectionString;
-
-  try {
-    const url = new URL(connectionString);
-    if (!url.searchParams.has("serverSelectionTimeoutMS")) {
-      url.searchParams.set("serverSelectionTimeoutMS", "6000");
-    }
-    if (!url.searchParams.has("connectTimeoutMS")) {
-      url.searchParams.set("connectTimeoutMS", "5000");
-    }
-    return url.toString();
-  } catch {
-    return connectionString;
-  }
-}
+  new PrismaClient({ log: [] });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
@@ -96,7 +66,7 @@ export async function queryDatabase<T>(
     if (!options.isolateCooldown) databaseUnavailableUntil = performance.now() + DB_RETRY_COOLDOWN_MS;
     if (performance.now() - lastDatabaseWarningAt >= DB_RETRY_COOLDOWN_MS) {
       const diagnostics = getDatabaseErrorDiagnostics(error);
-      console.warn("MongoDB operation failed.", diagnostics);
+      console.warn("Database operation failed.", diagnostics);
       lastDatabaseWarningAt = performance.now();
     }
     throw error;

@@ -93,14 +93,10 @@ export async function POST(request: Request) {
       }
 
       let product: StoreProduct | null = null;
-      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(item.id);
-
-      if (isValidObjectId) {
-        try {
-          product = await prisma.product.findUnique({ where: { id: item.id }, include: { variants: true } });
-        } catch {
-          return NextResponse.json({ error: "We couldn't verify current product availability. Please try again shortly." }, { status: 503 });
-        }
+      try {
+        product = await prisma.product.findUnique({ where: { id: item.id }, include: { variants: true } });
+      } catch {
+        return NextResponse.json({ error: "We couldn't verify current product availability. Please try again shortly." }, { status: 503 });
       }
 
       // Cart contents persist in the browser. Older carts can hold fallback or
@@ -130,7 +126,7 @@ export async function POST(request: Request) {
         if (!variant) return NextResponse.json({ error: "A selected product option is unavailable." }, { status: 400 });
         if (!variant.isAvailable) return NextResponse.json({ error: "This product option is currently unavailable." }, { status: 409 });
         if (variant) {
-          matchedVariantId = /^[0-9a-fA-F]{24}$/.test(variant.id) ? variant.id : null;
+          matchedVariantId = variant.id;
           price = variant.price;
         }
       }
@@ -193,9 +189,7 @@ export async function POST(request: Request) {
     if (normalizedCoupon && !customerSession) {
       return NextResponse.json({ error: "Please sign in to use coupons.", code: "CUSTOMER_LOGIN_REQUIRED" }, { status: 401 });
     }
-    const customerId = (customerSession?.userId && /^[0-9a-fA-F]{24}$/.test(String(customerSession.userId)))
-      ? String(customerSession.userId)
-      : undefined;
+    const customerId = customerSession?.userId ? String(customerSession.userId) : undefined;
     let coupon: Awaited<ReturnType<typeof prisma.coupon.findUnique>> = null;
     if (normalizedCoupon) {
       coupon = await prisma.coupon.findUnique({ where: { code: normalizedCoupon } });

@@ -292,24 +292,11 @@ export async function POST(request: Request) {
 
     let saved = null;
     try {
-      // Use MongoDB's atomic single-document update for settings persistence.
-      // The previous Prisma update path returned P2010 in production even though
-      // reads worked. Upsert also makes first-time setup safe.
-      const result = await prisma.$runCommandRaw({
-        update: "StoreSettings",
-        updates: [{
-          q: { _id: "default" },
-          u: {
-            $set: dataToSave,
-            $currentDate: { updatedAt: true },
-          },
-          upsert: true,
-        }],
+      saved = await prisma.storeSettings.upsert({
+        where: { id: "default" },
+        update: dataToSave,
+        create: dataToSave,
       });
-      if (Number(result.ok) !== 1 || Number(result.n) !== 1) {
-        throw new Error("MongoDB did not confirm the settings update.");
-      }
-      saved = { id: "default", ...dataToSave, updatedAt: new Date() };
     } catch (error) {
       logServerError("security.admin.settings.persist_failed", error);
       const prismaCode = error && typeof error === "object" && "code" in error && typeof error.code === "string"

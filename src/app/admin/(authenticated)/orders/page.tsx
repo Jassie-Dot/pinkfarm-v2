@@ -36,7 +36,7 @@ export default async function AdminOrdersPage() {
 
       {databaseUnavailable ? (
         <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-800">
-          Orders are unavailable because MongoDB could not be reached. The empty list is not a confirmation that there are no orders. Check Settings → Database diagnostics.
+          Orders are unavailable because the database could not be reached. The empty list is not a confirmation that there are no orders. Check Settings → Database diagnostics.
         </div>
       ) : <OrdersTable orders={orders} />}
     </div>

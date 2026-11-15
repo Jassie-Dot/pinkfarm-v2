@@ -42,31 +42,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Keep the write to one known settings field. MongoDB single-document updates
-    // are atomic and this raw command avoids Prisma's model update path.
-    const result = await prisma.$runCommandRaw({
-      update: "StoreSettings",
-      updates: [{
-        q: { _id: "default" },
-        u: { $set: { [field]: body.image } },
-        upsert: false,
-      }],
+    await prisma.storeSettings.update({
+      where: { id: "default" },
+      data: { [field]: body.image },
     });
-
-    if (result.ok !== 1 || Number(result.n) !== 1) {
-      return NextResponse.json({
-        error: "The store settings record was not updated. Refresh settings and try again.",
-      }, { status: 409 });
-    }
 
     revalidateTag("store-settings", "max");
     revalidatePath("/");
     revalidatePath("/admin/settings");
     return NextResponse.json({ success: true, position });
   } catch (error) {
-    logServerError("security.admin.settings.hero_bubble_command_failed", error);
+    logServerError("security.admin.settings.hero_bubble_update_failed", error);
     return NextResponse.json({
-      error: "MongoDB could not update this bubble image. The existing image was kept.",
+      error: "The database could not update this bubble image. The existing image was kept.",
     }, { status: 503 });
   }
 }

@@ -49,20 +49,10 @@ export async function POST(request: Request) {
       where: { id: "default" },
       select: { heroVideo: true },
     });
-    const result = await prisma.$runCommandRaw({
-      update: "StoreSettings",
-      updates: [{
-        q: { _id: "default" },
-        u: { $set: { heroVideo: body.video, heroVideoOpacity: opacity } },
-        upsert: false,
-      }],
+    await prisma.storeSettings.update({
+      where: { id: "default" },
+      data: { heroVideo: body.video, heroVideoOpacity: opacity },
     });
-
-    if (result.ok !== 1 || Number(result.n) !== 1) {
-      return NextResponse.json({
-        error: "Store settings were not updated. Refresh the page and try again.",
-      }, { status: 409 });
-    }
 
     const previousVideo = previous?.heroVideo;
     if (previousVideo && previousVideo !== body.video) {
@@ -81,7 +71,7 @@ export async function POST(request: Request) {
     revalidatePath("/admin/settings");
     return NextResponse.json({ success: true, video: body.video, opacity });
   } catch (error) {
-    logServerError("security.admin.settings.hero_video_command_failed", error);
+    logServerError("security.admin.settings.hero_video_update_failed", error);
     return NextResponse.json({
       error: "The hero video could not be saved. The existing video was kept.",
     }, { status: 503 });

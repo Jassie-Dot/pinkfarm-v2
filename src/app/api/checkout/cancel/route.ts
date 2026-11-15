@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const body = parsed.value as Record<string, unknown>;
   const orderId = typeof body.orderId === "string" ? body.orderId : "";
   const gatewayOrderId = typeof body.razorpayOrderId === "string" ? body.razorpayOrderId : "";
-  if (!/^[0-9a-fA-F]{24}$/.test(orderId) || !/^order_[A-Za-z0-9]+$/.test(gatewayOrderId) || !verifyCheckoutCancelToken(orderId, gatewayOrderId, body.cancelToken)) {
+  if (!orderId || orderId.length > 191 || !/^order_[A-Za-z0-9]+$/.test(gatewayOrderId) || !verifyCheckoutCancelToken(orderId, gatewayOrderId, body.cancelToken)) {
     return NextResponse.json({ error: "Payment cancellation details are invalid or expired." }, { status: 400 });
   }
 

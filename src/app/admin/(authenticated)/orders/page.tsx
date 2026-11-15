@@ -1,22 +1,22 @@
 import { prisma } from "@/lib/db";
-import { connection } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { logServerError } from "@/lib/server-log.mjs";
 import { OrdersTable } from "./OrdersTable";
+import { connection } from "next/server";
 
 export const instant = false;
 
 export default async function AdminOrdersPage() {
-  // Orders and their default date filters depend on request time and live data.
   await connection();
-
   let orders: Prisma.OrderGetPayload<{ include: { items: true } }>[] = [];
+  let databaseUnavailable = false;
   try {
     orders = await prisma.order.findMany({
       orderBy: { createdAt: "desc" },
       include: { items: true },
     });
   } catch (err) {
+    databaseUnavailable = true;
     logServerError("security.admin_orders.load_failed", err);
   }
 
@@ -34,7 +34,11 @@ export default async function AdminOrdersPage() {
         </div>
       </div>
 
-      <OrdersTable orders={orders} />
+      {databaseUnavailable ? (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-800">
+          Orders are unavailable because MongoDB could not be reached. The empty list is not a confirmation that there are no orders. Check Settings → Database diagnostics.
+        </div>
+      ) : <OrdersTable orders={orders} />}
     </div>
   );
 }

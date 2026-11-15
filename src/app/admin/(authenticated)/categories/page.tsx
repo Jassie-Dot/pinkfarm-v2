@@ -1,15 +1,23 @@
 import { getStoreProducts, getStoreSettings } from "@/lib/defaultProducts";
 import { AdminCategoriesClient } from "./AdminCategoriesClient";
+import { connection } from "next/server";
+import { logServerError } from "@/lib/server-log.mjs";
 
 export const instant = false;
 
 const DEFAULT_CATEGORIES = ["Makhana", "Nuts", "Pantry"];
 
 export default async function AdminCategoriesPage() {
-  const [settings, products] = await Promise.all([
+  await connection();
+  const result = await Promise.all([
     getStoreSettings(),
     getStoreProducts({ includeUnavailable: true }),
-  ]);
+  ]).catch((error) => {
+    logServerError("security.admin_categories.load_failed", error);
+    return null;
+  });
+  if (!result) return <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-800">Category data is unavailable because MongoDB could not be reached.</div>;
+  const [settings, products] = result;
 
   const configuredCategories =
     Array.isArray(settings?.storeCategories) && settings.storeCategories.length > 0

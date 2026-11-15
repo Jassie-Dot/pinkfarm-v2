@@ -1,16 +1,15 @@
 import { prisma } from "@/lib/db";
-import { connection } from "next/server";
 import { DashboardOverview, SerializedOrder } from "./DashboardOverview";
 import { logServerError } from "@/lib/server-log.mjs";
+import { connection } from "next/server";
 
 export const instant = false;
 
 export default async function AdminDashboard() {
-  // The dashboard filters orders against the current time.
   await connection();
-
   let serializedOrders: SerializedOrder[] = [];
   let lowStockCount = 0;
+  let databaseUnavailable = false;
 
   try {
     const [orders, products] = await Promise.all([
@@ -41,6 +40,7 @@ export default async function AdminDashboard() {
       }
     });
   } catch (error) {
+    databaseUnavailable = true;
     logServerError("security.admin_dashboard.load_failed", error);
   }
 
@@ -48,6 +48,7 @@ export default async function AdminDashboard() {
     <DashboardOverview
       initialOrders={serializedOrders}
       lowStockCount={lowStockCount}
+      databaseUnavailable={databaseUnavailable}
     />
   );
 }

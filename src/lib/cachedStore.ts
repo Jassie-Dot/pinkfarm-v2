@@ -20,16 +20,16 @@ export async function getCachedStoreProducts(options?: { includeUnavailable?: bo
       }),
     );
 
-    if (products && products.length > 0) {
+    if (products) {
       cacheLife("hours");
       return (products as unknown as StoreProduct[]).map(serializeStoreProductMedia);
     }
   } catch {
-    // Fall through to fallback cache so transient DB outages recover gracefully.
+    // Do not cache outage data as a normal catalog for the regular hours profile.
   }
 
-  cacheLife("hours");
-  return FALLBACK_PRODUCTS.map(serializeStoreProductMedia);
+  cacheLife("seconds");
+  return process.env.NODE_ENV === "production" ? [] : FALLBACK_PRODUCTS.map(serializeStoreProductMedia);
 }
 
 export async function getCachedStoreProductBySlug(slug: string): Promise<StoreProduct | null> {
@@ -49,11 +49,13 @@ export async function getCachedStoreProductBySlug(slug: string): Promise<StorePr
       return serializeStoreProductMedia(product as unknown as StoreProduct);
     }
   } catch {
-    cacheLife("hours");
+    cacheLife("seconds");
+    if (process.env.NODE_ENV === "production") return null;
     const fallback = FALLBACK_PRODUCTS.find((p) => p.slug === slug);
     return fallback ? serializeStoreProductMedia(fallback) : null;
   }
 
+  if (process.env.NODE_ENV === "production") return null;
   const fallback = FALLBACK_PRODUCTS.find((p) => p.slug === slug);
   return fallback ? serializeStoreProductMedia(fallback) : null;
 }

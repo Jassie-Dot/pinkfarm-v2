@@ -5,6 +5,8 @@ import ComboBuilder from "@/components/products/ComboBuilder";
 import { getCachedStoreProducts, getCachedStoreSettings } from "@/lib/cachedStore";
 import { pickComboProductData, pickProductCardData } from "@/lib/mediaUrl";
 
+export const instant = false;
+
 export default async function ProductsPage() {
   const [allProducts, settings] = await Promise.all([getCachedStoreProducts({ includeUnavailable: false }), getCachedStoreSettings()]);
   const products = allProducts.filter((p) => p.isAvailable !== false);

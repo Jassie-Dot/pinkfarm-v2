@@ -3,6 +3,8 @@ import ComboBuilder from "@/components/products/ComboBuilder";
 import { getCachedStoreProducts, getCachedStoreSettings } from "@/lib/cachedStore";
 import { pickComboProductData } from "@/lib/mediaUrl";
 
+export const instant = false;
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getCachedStoreSettings();
   const title = `${settings.comboTitlePrefix || "Curate Your"} ${settings.comboTitleHighlight || "Pink Farm Combo"} | ${settings.storeName || "Pink Farm"}`;

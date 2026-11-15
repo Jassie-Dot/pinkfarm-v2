@@ -9,14 +9,10 @@ import { ProductBadges } from "@/components/products/ProductHighlightBadges";
 import { ProductImageGallery, ProductDescriptionGallery } from "@/components/products/ProductImageGallery";
 import {
   getCachedStoreProductBySlug,
-  getCachedStoreProducts,
   getCachedStoreSettings,
 } from "@/lib/cachedStore";
 
-export async function generateStaticParams() {
-  const products = await getCachedStoreProducts();
-  return products.map((product) => ({ slug: product.slug }));
-}
+export const instant = false;
 
 function ProductDetailSkeleton() {
   return (

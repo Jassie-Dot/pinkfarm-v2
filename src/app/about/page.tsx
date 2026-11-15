@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/Button";
 import { FadeIn, StaggerContainer, StaggerItem, HoverCard, ScaleOnTap, SpotlightCard, GlowPulse } from "@/components/ui/MotionWrappers";
 import { getCachedStoreSettings, getCachedStoreProducts } from "@/lib/cachedStore";
 
+export const instant = false;
+
 export const metadata = {
   title: "About Us — Pink Farm",
   description: "Meet Anjali, the dietitian-turned-food-entrepreneur behind Pink Farm. Learn our story, our mission, and our uncompromising promise on quality.",

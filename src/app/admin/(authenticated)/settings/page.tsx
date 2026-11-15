@@ -34,6 +34,7 @@ import {
   Tag,
 } from "lucide-react";
 import { useSettingsStore, DEFAULT_SETTINGS } from "@/store/settingsStore";
+import { DatabaseDiagnostic } from "./DatabaseDiagnostic";
 import { FALLBACK_PRODUCTS, type StoreProduct } from "@/lib/defaultProducts";
 
 type Coupon = {
@@ -877,6 +878,7 @@ export default function StoreSettingsPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.15, ease: "easeOut" }}
     >
+      <DatabaseDiagnostic />
       {/* ============================================================== */}
       {/* EYE-SOOTHING HEADER                                            */}
       {/* ============================================================== */}

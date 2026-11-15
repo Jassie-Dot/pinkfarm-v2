@@ -2,10 +2,17 @@ import { AdminProductsTable } from "./AdminProductsTable";
 import { getStoreProducts } from "@/lib/defaultProducts";
 
 import { connection } from "next/server";
+import { logServerError } from "@/lib/server-log.mjs";
 
 export default async function AdminProductsPage() {
   await connection();
-  const products = await getStoreProducts({ includeUnavailable: true });
+  let products;
+  try {
+    products = await getStoreProducts({ includeUnavailable: true });
+  } catch (error) {
+    logServerError("security.admin_products.load_failed", error);
+    return <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-800">Products and inventory are unavailable because MongoDB could not be reached.</div>;
+  }
 
   return (
     <div className="space-y-6">

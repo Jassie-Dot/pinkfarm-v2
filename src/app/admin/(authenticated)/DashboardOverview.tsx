@@ -31,6 +31,7 @@ export interface SerializedOrder {
 interface DashboardOverviewProps {
   initialOrders: SerializedOrder[];
   lowStockCount: number;
+  databaseUnavailable?: boolean;
 }
 
 export function isWithinPeriod(dateStr: string, period: TimePeriod): boolean {
@@ -77,7 +78,7 @@ const PERIOD_OPTIONS: { id: TimePeriod; label: string; shortLabel: string; descr
   { id: "all", label: "All Time", shortLabel: "All Time", description: "All historical store orders" },
 ];
 
-export function DashboardOverview({ initialOrders, lowStockCount }: DashboardOverviewProps) {
+export function DashboardOverview({ initialOrders, lowStockCount, databaseUnavailable = false }: DashboardOverviewProps) {
   // Read initial period from localStorage if available, default to "today" or "weekly"
   const [period, setPeriod] = useState<TimePeriod>("today");
   const [searchQuery, setSearchQuery] = useState("");
@@ -161,6 +162,11 @@ export function DashboardOverview({ initialOrders, lowStockCount }: DashboardOve
 
   return (
     <div className="space-y-6 sm:space-y-8">
+      {databaseUnavailable && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+          Dashboard data is unavailable because MongoDB could not be reached. No order or inventory totals are being shown; check Settings → Database diagnostics.
+        </div>
+      )}
       {/* ============================================================== */}
       {/* HEADER SECTION WITH EYE-SOOTHING FILTER DROPDOWN & PILLS       */}
       {/* ============================================================== */}

@@ -95,11 +95,47 @@ export async function queryDatabase<T>(
   } catch (error) {
     if (!options.isolateCooldown) databaseUnavailableUntil = performance.now() + DB_RETRY_COOLDOWN_MS;
     if (performance.now() - lastDatabaseWarningAt >= DB_RETRY_COOLDOWN_MS) {
-      console.warn("MongoDB is unavailable; serving fallback store data.");
+      const diagnostics = getDatabaseErrorDiagnostics(error);
+      console.warn("MongoDB operation failed.", diagnostics);
       lastDatabaseWarningAt = performance.now();
     }
     throw error;
   } finally {
     if (timeout) clearTimeout(timeout);
   }
+}
+
+/** Return stable, non-sensitive connection diagnostics; never include error messages or URIs. */
+export function getDatabaseErrorDiagnostics(error: unknown) {
+  let candidate = error as { name?: unknown; code?: unknown; errorCode?: unknown; cause?: unknown } | null;
+  let errorType = "DatabaseError";
+  let rawCode: string | undefined;
+  const visited = new Set<unknown>();
+  for (let depth = 0; candidate && depth < 4 && !visited.has(candidate); depth++) {
+    visited.add(candidate);
+    if (errorType === "DatabaseError" && typeof candidate.name === "string" && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(candidate.name)) errorType = candidate.name;
+    const value = typeof candidate.code === "string" ? candidate.code :
+      typeof candidate.errorCode === "string" ? candidate.errorCode : undefined;
+    if (value && /^[A-Z0-9_]{2,40}$/.test(value)) {
+      rawCode = value;
+      break;
+    }
+    candidate = candidate.cause as typeof candidate;
+  }
+  const code = rawCode && /^[A-Z0-9_]{2,40}$/.test(rawCode) ? rawCode : undefined;
+
+  let reason = "DATABASE_UNAVAILABLE";
+  if (code === "ECONNREFUSED") reason = "CONNECTION_REFUSED";
+  else if (code === "ENOTFOUND" || code === "EAI_AGAIN") reason = "DNS_LOOKUP_FAILED";
+  else if (code === "ETIMEDOUT" || code === "ESOCKETTIMEDOUT") reason = "CONNECTION_TIMEOUT";
+  else if (code === "TLS_ERROR" || code === "CERT_HAS_EXPIRED") reason = "TLS_FAILURE";
+  else if (code === "P1001") reason = "DATABASE_HOST_UNREACHABLE";
+  else if (code === "P1002" || code === "P1008") reason = "CONNECTION_TIMEOUT";
+  else if (code === "P1017") reason = "DATABASE_CONNECTION_CLOSED";
+  else if (code === "P1000") reason = "AUTHENTICATION_FAILED";
+  else if (code === "P1010") reason = "DATABASE_PERMISSION_DENIED";
+  else if (/Authentication/i.test(errorType)) reason = "AUTHENTICATION_FAILED";
+  else if (/KnownRequest/i.test(errorType) && code?.startsWith("P")) reason = "PRISMA_REQUEST_FAILED";
+
+  return { errorType, ...(code ? { code } : {}), reason };
 }

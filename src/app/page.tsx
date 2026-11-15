@@ -19,6 +19,8 @@ import { getCachedStoreProducts, getCachedStoreSettings } from "@/lib/cachedStor
 import { pickComboProductData } from "@/lib/mediaUrl";
 import { HeroSection } from "@/components/home/HeroSection";
 
+export const instant = false;
+
 export default async function Home() {
   const [products, storeSettings] = await Promise.all([getCachedStoreProducts(), getCachedStoreSettings()]);
   const homepageProducts = products.filter((p) => p.isFeatured);

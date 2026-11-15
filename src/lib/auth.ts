@@ -123,7 +123,9 @@ export async function requireAdminSession() {
       valid = false;
     }
   }
-  if (!valid) console.warn("security.admin_authorization.failed");
+  // Missing sessions are normal for login pages and the session-status probe;
+  // only log rejected credentials when a session was actually presented.
+  if (!valid && session) console.warn("security.admin_authorization.failed");
   return valid ? session : null;
 }
 

@@ -1,9 +1,10 @@
 import { logServerError } from "@/lib/server-log.mjs";
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCustomerSession } from "@/lib/auth";
 
 export async function GET() {
+  await connection();
   try {
     if (!(await getCustomerSession())) {
       return NextResponse.json({ error: "Please sign in to browse coupons.", code: "CUSTOMER_LOGIN_REQUIRED" }, { status: 401, headers: { "Cache-Control": "no-store" } });

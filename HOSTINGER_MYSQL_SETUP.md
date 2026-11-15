@@ -29,3 +29,14 @@ This command needs `DATABASE_URL` and `ADMIN_PASSWORD` available during the buil
 ## 4. Verify from the running app
 
 Set the app's start command to `npm run start` if Hostinger does not detect it automatically. Sign in to the admin area, open Settings → Database diagnostics, and run the MySQL checks. DNS, TCP, Prisma connection, and the read-only `SELECT 1` ping must pass there. A successful local build does not verify database credentials or Hostinger connectivity.
+
+If database failure blocks administrator sign-in, temporarily set a strong random `DATABASE_DIAGNOSTIC_TOKEN` in Hostinger and redeploy. While viewing the site, run this in the browser developer console, replacing the placeholder with that token:
+
+```js
+fetch("/api/admin/database/diagnostics", {
+  headers: { "x-database-diagnostic-token": "YOUR_TEMPORARY_DIAGNOSTIC_TOKEN" },
+  cache: "no-store",
+}).then((response) => response.json()).then(console.log)
+```
+
+The report omits credentials. Remove `DATABASE_DIAGNOSTIC_TOKEN` after diagnosis and redeploy.

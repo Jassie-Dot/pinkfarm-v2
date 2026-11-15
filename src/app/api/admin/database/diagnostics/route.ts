@@ -1,4 +1,5 @@
 import { lookup } from "node:dns/promises";
+import { timingSafeEqual } from "node:crypto";
 import net from "node:net";
 import { NextResponse } from "next/server";
 import { prisma, getDatabaseErrorDiagnostics } from "@/lib/db";
@@ -111,9 +112,22 @@ async function getDatabaseReport(): Promise<Report> {
   return base;
 }
 
-export async function GET() {
-  const session = await getSession(undefined, ADMIN_COOKIE_NAME);
-  if (!session || !isAdminSession(session, ADMIN_EMAIL)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+function hasDiagnosticToken(request: Request): boolean {
+  const expected = process.env.DATABASE_DIAGNOSTIC_TOKEN;
+  const supplied = request.headers.get("x-database-diagnostic-token");
+  if (!expected || !supplied || expected.length > 512 || supplied.length > 512) return false;
+  const expectedBytes = Buffer.from(expected);
+  const suppliedBytes = Buffer.from(supplied);
+  return expectedBytes.length === suppliedBytes.length && timingSafeEqual(expectedBytes, suppliedBytes);
+}
+
+export async function GET(request: Request) {
+  // Keep the endpoint protected while allowing an operator to diagnose a DB
+  // outage that also prevents database-backed administrator login.
+  if (!hasDiagnosticToken(request)) {
+    const session = await getSession(undefined, ADMIN_COOKIE_NAME);
+    if (!session || !isAdminSession(session, ADMIN_EMAIL)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   if (lastResult && Date.now() < nextCheckAt) {
     return NextResponse.json(lastResult, { status: lastResult.ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });

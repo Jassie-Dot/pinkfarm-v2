@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { connection } from "next/server";
 import ComboBuilder from "@/components/products/ComboBuilder";
 import { getCachedStoreProducts, getCachedStoreSettings } from "@/lib/cachedStore";
 import { pickComboProductData } from "@/lib/mediaUrl";
@@ -6,6 +7,7 @@ import { pickComboProductData } from "@/lib/mediaUrl";
 export const instant = false;
 
 export async function generateMetadata(): Promise<Metadata> {
+  await connection();
   const settings = await getCachedStoreSettings();
   const title = `${settings.comboTitlePrefix || "Curate Your"} ${settings.comboTitleHighlight || "Pink Farm Combo"} | ${settings.storeName || "Pink Farm"}`;
   const description = settings.comboSubtitle || "Build your custom combo of delicious makhana snacks and unlock exclusive bundle discounts.";
@@ -21,6 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ComboPage() {
+  await connection();
   const [products] = await Promise.all([getCachedStoreProducts()]);
   const comboProducts = products.map(pickComboProductData);
 

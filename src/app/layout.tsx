@@ -53,6 +53,7 @@ export const metadata: Metadata = {
 };
 
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FloatingSocials } from "@/components/ui/FloatingSocials";
@@ -64,6 +65,9 @@ import { CartPersistenceSync } from "@/components/cart/CartPersistenceSync";
 import { getCachedPublicStoreSettings } from "@/lib/cachedStore";
 
 async function PublicSettingsSync() {
+  // Public settings depend on the live database; resolve them after the request,
+  // not while Next.js is building a static shell without production DB access.
+  await connection();
   const publicSettings = await getCachedPublicStoreSettings();
   return <SettingsSync initialSettings={publicSettings} />;
 }

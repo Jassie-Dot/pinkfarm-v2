@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Button } from "@/components/ui/Button";
 import { FadeIn, StaggerContainer, StaggerItem, HoverCard, ScaleOnTap, SpotlightCard, GlowPulse } from "@/components/ui/MotionWrappers";
 import { getCachedStoreSettings, getCachedStoreProducts } from "@/lib/cachedStore";
@@ -13,6 +14,7 @@ export const metadata = {
 };
 
 export default async function AboutPage() {
+  await connection();
   const [storeSettings, products] = await Promise.all([getCachedStoreSettings(), getCachedStoreProducts()]);
   const heartProduct = storeSettings.heartProductId
     ? products.find((p) => p.id === storeSettings.heartProductId || p.slug === storeSettings.heartProductId)

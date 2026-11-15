@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Button } from "@/components/ui/Button";
 import { ShieldCheck, Truck, Lock, Package } from "lucide-react";
 import { 
@@ -22,6 +23,7 @@ import { HeroSection } from "@/components/home/HeroSection";
 export const instant = false;
 
 export default async function Home() {
+  await connection();
   const [products, storeSettings] = await Promise.all([getCachedStoreProducts(), getCachedStoreSettings()]);
   const homepageProducts = products.filter((p) => p.isFeatured);
   const comboProducts = products.map(pickComboProductData);

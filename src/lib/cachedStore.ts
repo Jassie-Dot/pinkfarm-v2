@@ -85,7 +85,8 @@ export async function getCachedStoreSettings() {
       });
     }
   } catch {
-    cacheLife("hours");
+    // Do not cache an outage fallback for hours; retry against the database shortly.
+    cacheLife("seconds");
     return serializeStoreSettingsMedia(DEFAULT_SETTINGS);
   }
   return serializeStoreSettingsMedia(DEFAULT_SETTINGS);
@@ -182,7 +183,9 @@ export async function getCachedPublicStoreSettings() {
       };
     }
   } catch {
-    cacheLife("hours");
+    // An outage fallback must not be cached for hours after a build-time or
+    // transient connection failure.
+    cacheLife("seconds");
     return fallback;
   }
   return fallback;

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { AddToCart } from "./AddToCart";
 import { ChevronRight } from "lucide-react";
 import { FadeIn } from "@/components/ui/MotionWrappers";
@@ -48,6 +49,7 @@ async function ProductDetailContent({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await connection();
   const { slug } = await params;
   const [product, settings] = await Promise.all([
     getCachedStoreProductBySlug(slug),
